@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -83,4 +85,27 @@ func main() {
 		log.Panic(err)
 	}
 	fmt.Printf("%v", mahasiswa)
+
+	fmt.Println("<=====Implementasi Redis pada APi Pokemon=====>")
+	http.HandleFunc("/pokemonwithredis", getPokemonWithRedis)
+	http.HandleFunc("/pokemonwithoutredis", getPokemonWithoutRedis)
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func getPokemonWithoutRedis(w http.ResponseWriter, r *http.Request) {
+	//mengambil parameter atau query yang dikirim oleh client
+	pokemonName := r.URL.Query()["pokemon"][0]
+
+	client := http.DefaultClient
+	//melakukan req ke endpoint pokeapi
+	request, err := http.NewRequest("GET", "https://pokeapi.co/api/v2/pokemon/"+pokemonName, nil)
+	if err != nil {
+		log.Panic(err)
+	}
+	result, err := client.Do(request)
+	if err != nil {
+		log.Panic(err)
+	}
+	responseBody, _ := ioutil.ReadAll(result.Body)
+	w.Write(responseBody)
 }
