@@ -15,11 +15,22 @@ type Mahasiswa struct {
 }
 
 func main() {
-	conn, err := redis.Dial("tcp", "localhost:6379")
-	if err != nil {
-		log.Panic(err)
-	}
-	_, err = conn.Do("HSET", "mahasiswa:1", "nama", "Redha Juanda", "nim", "12345", "ipk", 3.34, "semester", 4)
+	// conn, err := redis.Dial("tcp", "localhost:6379")
+	// if err != nil {
+	// 	log.Panic(err)
+	// }
+
+	pool := redis.NewPool(
+		func() (redis.Conn, error) {
+			return redis.Dial("tcp", "localhost:6379")
+		}, 0,
+	)
+
+	pool.MaxActive = 0
+	conn := pool.Get()
+	defer conn.Close()
+
+	_, err := conn.Do("HSET", "mahasiswa:1", "nama", "Redha Juanda", "nim", "12345", "ipk", 3.34, "semester", 4)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -58,6 +69,9 @@ func main() {
 
 	//assign ke struct
 	// mengambil semua data berdasarkan id mahasiswa
+	// HGETALL mengembalikan semua field yang ada pada objek tsb
+	// redis.Values adalah reply helper yang mengconvert data
+	// reply dengan tipe interface ke tipe []interface{}
 	rep, err := redis.Values(conn.Do("HGETALL", "mahasiswa:1"))
 	if err != nil {
 		log.Panic(err)
