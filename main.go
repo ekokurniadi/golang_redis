@@ -84,7 +84,7 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	fmt.Printf("%v", mahasiswa)
+	fmt.Printf("%v\n", mahasiswa)
 
 	fmt.Println("<=====Implementasi Redis pada APi Pokemon=====>")
 	http.HandleFunc("/pokemonwithredis", getPokemonWithRedis)
@@ -108,4 +108,38 @@ func getPokemonWithoutRedis(w http.ResponseWriter, r *http.Request) {
 	}
 	responseBody, _ := ioutil.ReadAll(result.Body)
 	w.Write(responseBody)
+}
+
+func getPokemonWithRedis(w http.ResponseWriter, r *http.Request) {
+	pokemonName := r.URL.Query()["pokemon"][0]
+	// membuat koneksi redis
+	conn, err := redis.Dial("tcp", "localhost:6379")
+	if err != nil {
+		log.Panic(err)
+	}
+	// pengecekan pikachu sudah dicache atau belum
+	reply, err := redis.Bytes(conn.Do("GET", pokemonName))
+	if err == nil {
+		w.Write(reply)
+		return
+	}
+	// jika belum lakukan request API
+	client := http.DefaultClient
+	req, err := http.NewRequest("GET", "https://pokeapi.co/api/v2/pokemon/"+pokemonName, nil)
+	if err != nil {
+		log.Panic(err)
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Panic(err)
+	}
+	bd, _ := ioutil.ReadAll(res.Body)
+
+	// simpan data response di redis
+	_, err = conn.Do("SET", pokemonName, string(bd))
+	if err != nil {
+		log.Panic(err)
+	}
+	// write response
+	w.Write(bd)
 }
